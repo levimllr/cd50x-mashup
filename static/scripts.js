@@ -38,7 +38,7 @@ $(document).ready(function() {
     // Options for map
     // https://developers.google.com/maps/documentation/javascript/reference#MapOptions
     let options = {
-        center: {lat: 37.4236, lng: -122.1619}, // Stanford, California
+        center: {lat: 37.405983, lng: -122.001474}, // Sunnyvale, California
         disableDefaultUI: true,
         mapTypeId: google.maps.MapTypeId.ROADMAP,
         maxZoom: 14,
@@ -60,10 +60,65 @@ $(document).ready(function() {
 });
 
 
-// Add marker for place to map
+// Add marker for place to map.
+// This function adds a marker for place on the map, where place is a JavaScript object that represents a row from the places table in mashup.db.
 function addMarker(place)
 {
-    // TODO
+    // instantiate marker
+    // Here we extract our Google-Map-friendly latitude and longitude.
+    var aLatLng = new google.maps.LatLng(place.latitude, place.longitude);
+
+    var placename = place.place_name + ", " + place.admin_name1
+
+    // Here we define a basic marker.
+    var marker = new google.maps.Marker({
+    position: aLatLng,
+    map: map,
+    title: placename
+    });
+
+
+    // These next lines will also trigger an animation if the mouse cursor moves over a marker.
+    // Source: https://developers.google.com/maps/documentation/javascript/markers
+    //marker.addListener('mouseover', toggleBounce);
+    //function toggleBounce() {
+    //    if (marker.getAnimation() !== null) {
+    //       marker.setAnimation(null);
+    //    } else {
+    //        marker.setAnimation(google.maps.Animation.BOUNCE);
+    //    }
+    //}
+
+    // get articles for place
+    google.maps.event.addListener(marker, "click", function(){
+        showInfo(marker);
+        let news = {
+            geo: place.postal_code
+        };
+        $.getJSON(("/articles"), news, function(articles) {
+            var articlelist = "<ul>";
+            for (var i = 0; i < articles.length; i++) {
+                articlelist += '<li><a target="_blank" href="' +
+                                    articles[i].link +
+                                    '">' +
+                                    articles[i].title +
+                                    "</a></li>";
+            }
+            articlelist += "</ul>";
+
+            showInfo(marker, articlelist);
+            });
+
+        });
+
+
+    // remember marker
+    // Remember markers, the array defined at the beginning of the document?
+    // We will be pushing our work to that array via the JavaScript array push() method.
+    // Source: https://www.w3schools.com/jsref/jsref_push.asp
+    markers.push(marker);
+
+
 }
 
 
@@ -98,7 +153,7 @@ function configure()
         templates: {
             suggestion: Handlebars.compile(
                 "<div>" +
-                "TODO" +
+                "{{place_name}}, {{admin_name1}}, {{postal_code}}" +
                 "</div>"
             )
         }
@@ -122,8 +177,8 @@ function configure()
     // Re-enable ctrl- and right-clicking (and thus Inspect Element) on Google Map
     // https://chrome.google.com/webstore/detail/allow-right-click/hompjdfbfmmmgflfjdlnkohcplmboaeo?hl=en
     document.addEventListener("contextmenu", function(event) {
-        event.returnValue = true; 
-        event.stopPropagation && event.stopPropagation(); 
+        event.returnValue = true;
+        event.stopPropagation && event.stopPropagation();
         event.cancelBubble && event.cancelBubble();
     }, true);
 
@@ -136,9 +191,13 @@ function configure()
 
 
 // Remove markers from map
+// removeMarker: 1. remove all markers from the map and delete them. 2. Google Maps API
 function removeMarkers()
 {
-    // TODO
+    for (var i = 0; i < markers.length; i++) {
+            markers[i].setMap(null);
+        }
+    markers = [];
 }
 
 
@@ -150,7 +209,7 @@ function search(query, syncResults, asyncResults)
         q: query
     };
     $.getJSON("/search", parameters, function(data, textStatus, jqXHR) {
-     
+
         // Call typeahead's callback with search results (i.e., places)
         asyncResults(data);
     });
@@ -184,7 +243,7 @@ function showInfo(marker, content)
 
 
 // Update UI's markers
-function update() 
+function update()
 {
     // Get map's bounds
     let bounds = map.getBounds();

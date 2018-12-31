@@ -31,16 +31,60 @@ def index():
 def articles():
     """Look up articles for geo"""
 
-    # TODO
-    return jsonify([])
+    # geo is passed into /articles as a GET parameter.
+    # That is, it's passed into articles as a parameter in the URL, as in "http://mashup.cs50.net/articles?geo=02138".
+    # On the following line, we establish the variable geo and set it equal to the geo supplied by the user in their URL.
+    # See http://flask.pocoo.org/docs/1.0/api/#flask.Request.args for more details.
+    geo = request.args.get("geo")
+
+    if not geo:
+        raise RuntimeError
+
+    # Now we "lookup" geo, returning articles in the form of an array of dictionaries with links and titles.
+    results = lookup(geo)
+
+    # jsonify(), a function from Flask, formats the user input into a JSON-friendly string.
+    # We will reduce our results to 7, in case there's a gluttony of news!
+    if len(results) > 5:
+        return jsonify(results[0], results[1], results[2], results[3], results[4], results[5], results[6])
+    else:
+        return jsonify(results)
 
 
 @app.route("/search")
 def search():
     """Search for places that match query"""
 
-    # TODO
-    return jsonify([])
+    # q is passed into /search as a GET parameter.
+    q = request.args.get("q")
+
+    if not q:
+        raise RuntimeError
+
+    delim = False
+    if q.find(",") != -1:
+        names = q.split(",")
+        delim = True
+    elif q.find(" ") != -1:
+        names = q.split(" ")
+        delim = True
+
+    if delim == False:
+        results = db.execute(
+            "SELECT * FROM places WHERE postal_code LIKE :q OR place_name LIKE :q OR admin_name1 LIKE :q OR admin_name2 LIKE :q;", q=q + "%")
+        results.extend(db.execute(
+            "SELECT * FROM places WHERE postal_code LIKE :q OR place_name LIKE :q OR admin_name1 LIKE :q OR admin_name2 LIKE :q;", q="%" + q))
+    else:
+        results = db.execute(
+            "SELECT * FROM places WHERE postal_code LIKE :q OR place_name LIKE :city OR admin_name1 LIKE :state", q=q, city=names[0], state=names[1])
+
+    # jsonify(), a function from Flask, formats the search results into a JSON-friendly string.
+    # We will reduce our results to 20, in case there's a gluttony of similar places!
+    if len(results) > 20:
+        results = results[:20]
+        return jsonify(results)
+    else:
+        return jsonify(results)
 
 
 @app.route("/update")
